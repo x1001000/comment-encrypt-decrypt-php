@@ -1,29 +1,17 @@
 import re
+import base64
+import hashlib
+from cryptography.fernet import Fernet
+import streamlit as st
+
 def contains_japanese(text):
     # This regex includes the Unicode ranges for Hiragana, Katakana, and CJK (which includes Kanji)
     japanese_regex = re.compile(r'[\u3040-\u30FF\u4E00-\u9FFF]')
     return bool(japanese_regex.search(text))
 
-
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.backends import default_backend
-from cryptography.fernet import Fernet
-import base64
-
 # Function to generate a key from a passphrase
-def generate_key(passphrase: str, salt: bytes) -> bytes:
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=100000,
-        backend=default_backend()
-    )
-    return base64.urlsafe_b64encode(kdf.derive(passphrase.encode()))
-# salt = b'some_salt'
-# key = generate_key(passphrase, salt)
-# print(f'加密解密金鑰: {key.decode()}')
+def generate_key(passphrase: str) -> bytes:
+    return base64.urlsafe_b64encode(hashlib.sha256(passphrase.encode()).digest())
 
 def encrypt_comment(comment: str, key: bytes) -> str:
     fernet = Fernet(key)
@@ -37,20 +25,16 @@ def encrypt_comments_in_file(file_content: str):
 
     encrypted_lines = []
     for line in lines:
-        # if line.strip().startswith('#'):
-        #     comment = line.strip()[1:].strip()
-        #     encrypted_comment = encrypt_comment(comment, key)
-        #     encrypted_lines.append(f"# {encrypted_comment}\n")
-        try:
-            space_or_code, comment = line.split('//')
-        except:
-            encrypted_lines.append(line)
-        else:
+        match = re.search('|'.join(['//', '#region ', '#endregion ']), line)
+        if match:
+            space_or_code, comment = line.split(match.group(0))
             if contains_japanese(comment):
                 encrypted_comment = encrypt_comment(comment, key)
-                encrypted_lines.append(f'{space_or_code}//{encrypted_comment}')
+                encrypted_lines.append(f'{space_or_code}{match.group(0)}{encrypted_comment}')
             else:
                 encrypted_lines.append(line)
+        else:
+            encrypted_lines.append(line)
 
     # with open(file_path, 'w') as file:
     #     file.writelines(encrypted_lines)
@@ -73,24 +57,17 @@ def decrypt_comments_in_file(file_content: str):
 
     decrypted_lines = []
     for line in lines:
-        # if line.strip().startswith('#'):
-        #     encrypted_comment = line.strip()[1:].strip()
-        #     try:
-        #         decrypted_comment = decrypt_comment(encrypted_comment, key)
-        #         decrypted_lines.append(f"# {decrypted_comment}\n")
-        #     except Exception as e:
-        #         decrypted_lines.append(line)
-        try:
-            space_or_code, comment = line.split('//')
-        except:
-            decrypted_lines.append(line)
-        else:
+        match = re.search('|'.join(['//', '#region ', '#endregion ']), line)
+        if match:
+            space_or_code, comment = line.split(match.group(0))
             try:
                 decrypted_comment = decrypt_comment(comment, key)
             except:
                 decrypted_lines.append(line)
             else:
-                decrypted_lines.append(f'{space_or_code}//{decrypted_comment}')
+                decrypted_lines.append(f'{space_or_code}{match.group(0)}{decrypted_comment}')
+        else:
+            decrypted_lines.append(line)
 
     # with open(file_path, 'w') as file:
     #     file.writelines(decrypted_lines)
@@ -102,35 +79,33 @@ def decrypt_comments_in_file(file_content: str):
 # decrypt_comments_in_file(file_path)
 
 
-import streamlit as st
 st.title('C#腳本日文註解加密/解密工具')
 
 passphrase = st.text_input("金鑰（自訂）")
-salt = b'some_salt'
-key = generate_key(passphrase, salt)
+key = generate_key(passphrase)
 
-mode = st.selectbox("模式", ["加密", "解密"])
+process = {'加密': encrypt_comments_in_file, '解密': decrypt_comments_in_file}
+mode = st.selectbox('模式', process.keys())
 
-uploaded_file = st.file_uploader("上傳", type="cs")
+uploaded_file = st.file_uploader("上傳", type=['cs', 'zip'])
 
-import tempfile
 if uploaded_file is not None and passphrase:
-    file_content = uploaded_file.read().decode("utf-8")
-    # with tempfile.NamedTemporaryFile(delete=False, suffix=".cs") as tmp_file:
-    #     tmp_file.write(file_content.encode("utf-8"))
-    #     tmp_file_path = tmp_file.name
+    file_name, ext = uploaded_file.name.split('.')
+    if ext.lower() == 'cs':
+        file_name = f'{file_name}.cs'
+        mime_type = 'text/plain'
+        file_content = uploaded_file.read().decode("utf-8")
+        download = processed_content = process[mode](file_content)
+    if ext.lower() == 'zip':
+        file_name = f'{file_name}_{mode}.zip'
+        mime_type = 'application/zip'
+    
 
     # processed_content = process_script(file_content, passphrase, salt, mode)
-    if mode == "加密":
-        processed_content = encrypt_comments_in_file(file_content)
-    if mode == "解密":
-        processed_content = decrypt_comments_in_file(file_content)
-    
+    # st.text_area("Processed Script", value=processed_content, height=400)
     st.download_button(
         label="下載",
-        data=processed_content,
-        file_name=uploaded_file.name,
-        mime="text/x-python"
+        data=download,
+        file_name=file_name,
+        mime=mime_type
     )
-
-    # st.text_area("Processed Script", value=processed_content, height=400)
