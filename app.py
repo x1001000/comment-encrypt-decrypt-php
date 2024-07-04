@@ -3,6 +3,8 @@ import base64
 import hashlib
 from cryptography.fernet import Fernet
 import streamlit as st
+from zipfile import ZipFile
+from io import BytesIO
 
 def contains_japanese(text):
     # This regex includes the Unicode ranges for Hiragana, Katakana, and CJK (which includes Kanji)
@@ -27,7 +29,7 @@ def encrypt_comments_in_file(file_content: str):
     for line in lines:
         match = re.search('|'.join(['//', '#region ', '#endregion ']), line, re.IGNORECASE)
         if match:
-            space_or_code, comment = line.split(match.group(0))
+            space_or_code, comment = line.split(match.group(0), 1)
             if contains_japanese(comment):
                 encrypted_comment = encrypt_comment(comment, key)
                 encrypted_lines.append(f'{space_or_code}{match.group(0)}{encrypted_comment}')
@@ -59,7 +61,7 @@ def decrypt_comments_in_file(file_content: str):
     for line in lines:
         match = re.search('|'.join(['//', '#region ', '#endregion ']), line, re.IGNORECASE)
         if match:
-            space_or_code, comment = line.split(match.group(0))
+            space_or_code, comment = line.split(match.group(0), 1)
             try:
                 decrypted_comment = decrypt_comment(comment, key)
                 decrypted_lines.append(f'{space_or_code}{match.group(0)}{decrypted_comment}')
@@ -98,7 +100,23 @@ if uploaded_file is not None and passphrase:
     if ext.lower() == 'zip':
         file_name = f'{file_name}_{mode}.zip'
         mime_type = 'application/zip'
-    
+
+        target_zip_buffer = BytesIO()
+        with ZipFile(target_zip_buffer, 'w') as target_zip:
+            with ZipFile(uploaded_file, 'r') as source_zip:
+                for name in source_zip.namelist():
+                    with source_zip.open(name) as file:
+                        try:
+                            file_content = file.read().decode("utf-8")
+                            if name.endswith('.cs'):
+                                processed_content = process[mode](file_content)
+                                target_zip.writestr(name, processed_content.encode("utf-8"))
+                            else:
+                                target_zip.writestr(name, file_content.encode("utf-8"))
+                        except:
+                            pass
+        target_zip_buffer.seek(0)
+        download = target_zip_buffer
 
     # processed_content = process_script(file_content, passphrase, salt, mode)
     # st.text_area("Processed Script", value=processed_content, height=400)
