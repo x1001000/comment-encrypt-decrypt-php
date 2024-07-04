@@ -25,7 +25,7 @@ def encrypt_comments_in_file(file_content: str):
 
     encrypted_lines = []
     for line in lines:
-        match = re.search('|'.join(['//', '#region ', '#endregion ']), line)
+        match = re.search('|'.join(['//', '#region ', '#endregion ']), line, re.IGNORECASE)
         if match:
             space_or_code, comment = line.split(match.group(0))
             if contains_japanese(comment):
@@ -57,15 +57,14 @@ def decrypt_comments_in_file(file_content: str):
 
     decrypted_lines = []
     for line in lines:
-        match = re.search('|'.join(['//', '#region ', '#endregion ']), line)
+        match = re.search('|'.join(['//', '#region ', '#endregion ']), line, re.IGNORECASE)
         if match:
             space_or_code, comment = line.split(match.group(0))
             try:
                 decrypted_comment = decrypt_comment(comment, key)
+                decrypted_lines.append(f'{space_or_code}{match.group(0)}{decrypted_comment}')
             except:
                 decrypted_lines.append(line)
-            else:
-                decrypted_lines.append(f'{space_or_code}{match.group(0)}{decrypted_comment}')
         else:
             decrypted_lines.append(line)
 
