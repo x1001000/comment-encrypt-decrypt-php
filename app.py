@@ -95,7 +95,7 @@ if uploaded_file is not None and passphrase:
     if ext.lower() == 'cs':
         file_name = f'{file_name}.cs'
         mime_type = 'text/plain'
-        file_content = uploaded_file.read().decode("utf-8")
+        file_content = uploaded_file.read().decode()
         download = processed_content = process[mode](file_content)
     if ext.lower() == 'zip':
         file_name = f'{file_name}_{mode}.zip'
@@ -107,12 +107,12 @@ if uploaded_file is not None and passphrase:
                 for name in source_zip.namelist():
                     with source_zip.open(name) as file:
                         try:
-                            file_content = file.read().decode("utf-8")
+                            file_content = file.read().decode()
                             if name.endswith('.cs'):
                                 processed_content = process[mode](file_content)
-                                target_zip.writestr(name, processed_content.encode("utf-8"))
+                                target_zip.writestr(name, processed_content)
                             else:
-                                target_zip.writestr(name, file_content.encode("utf-8"))
+                                target_zip.writestr(name, file_content)
                         except:
                             pass
         target_zip_buffer.seek(0)
