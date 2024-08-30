@@ -43,7 +43,7 @@ def encrypt_comments_in_file(file_content: str):
     return '\n'.join(encrypted_lines)
 
 # # Usage
-# file_path = 'your_source_code.cs'
+# file_path = 'your_source_code.php'
 # passphrase = 'your_secure_passphrase'
 # encrypt_comments_in_file(file_path)
 
@@ -75,12 +75,12 @@ def decrypt_comments_in_file(file_content: str):
     return '\n'.join(decrypted_lines)
 
 # # Usage
-# file_path = 'your_source_code.cs'
+# file_path = 'your_source_code.php'
 # passphrase = 'your_secure_passphrase'
 # decrypt_comments_in_file(file_path)
 
 
-st.title('C#腳本日文註解加密/解密工具')
+st.title('PHP腳本日文註解加密/解密工具')
 
 passphrase = st.text_input("金鑰（自訂）")
 key = generate_key(passphrase)
@@ -88,12 +88,12 @@ key = generate_key(passphrase)
 process = {'加密': encrypt_comments_in_file, '解密': decrypt_comments_in_file}
 mode = st.selectbox('模式', process.keys())
 
-uploaded_file = st.file_uploader("上傳", type=['cs', 'zip'])
+uploaded_file = st.file_uploader("上傳", type=['php', 'zip'])
 
 if uploaded_file is not None and passphrase:
     file_name, ext = uploaded_file.name.split('.')
-    if ext.lower() == 'cs':
-        file_name = f'{file_name}.cs'
+    if ext.lower() == 'php':
+        file_name = f'{file_name}.php'
         mime_type = 'text/plain'
         file_content = uploaded_file.read().decode()
         download = processed_content = process[mode](file_content)
@@ -108,7 +108,7 @@ if uploaded_file is not None and passphrase:
                     with source_zip.open(name) as file:
                         try:
                             file_content = file.read().decode()
-                            if name.endswith('.cs'):
+                            if name.endswith('.php'):
                                 processed_content = process[mode](file_content)
                                 target_zip.writestr(name, processed_content)
                             else:
