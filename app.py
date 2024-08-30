@@ -28,6 +28,7 @@ def encrypt_comments_in_file(file_content: str):
     encrypted_lines = []
     for line in lines:
         match = re.search('|'.join(['//', '#region ', '#endregion ']), line, re.IGNORECASE)
+        match2 = re.search(r'/\*\*.*\*/', line)
         if match:
             space_or_code, comment = line.split(match.group(0), 1)
             if contains_japanese(comment):
@@ -35,12 +36,36 @@ def encrypt_comments_in_file(file_content: str):
                 encrypted_lines.append(f'{space_or_code}{match.group(0)}{encrypted_comment}')
             else:
                 encrypted_lines.append(line)
+        elif match2:
+            segments = line.split()
+            for segment in segments:
+                if contains_japanese(segment):
+                    encrypted_segment = encrypt_comment(segment, key)
+                    line = line.replace(segment, encrypted_segment)
+            encrypted_lines.append(line)
         else:
             encrypted_lines.append(line)
 
     # with open(file_path, 'w') as file:
     #     file.writelines(encrypted_lines)
-    return '\n'.join(encrypted_lines)
+    # return '\n'.join(encrypted_lines)
+    script = '\n'.join(encrypted_lines)
+    pattern = r'/\*\*\n(.*?)\n\s*\*/' # The ? makes the * non-greedy # to match DocBlocks
+    matches = re.finditer(pattern, script, re.DOTALL) # re.DOTALL makes the . match any character including newline
+    DocBlocks_start_end = [(match.start(1), match.end(1)) for match in matches]
+    for start, end in DocBlocks_start_end[::-1]:
+        DocBlock_lines = script[start:end].split('\n')
+        encrypted_DocBlock_lines = []
+        for DocBlock_line in DocBlock_lines:
+            space, comment = DocBlock_line.split('*', 1)
+            segments = comment.split()
+            for segment in segments:
+                if contains_japanese(segment):
+                    encrypted_segment = encrypt_comment(segment, key)
+                    comment = comment.replace(segment, encrypted_segment)
+            encrypted_DocBlock_lines.append(f'{space}*{comment}')
+        script = script[:start] + '\n'.join(encrypted_DocBlock_lines) + script[end:]
+    return script
 
 # # Usage
 # file_path = 'your_source_code.php'
@@ -60,6 +85,7 @@ def decrypt_comments_in_file(file_content: str):
     decrypted_lines = []
     for line in lines:
         match = re.search('|'.join(['//', '#region ', '#endregion ']), line, re.IGNORECASE)
+        match2 = re.search(r'/\*\*.*\*/', line)
         if match:
             space_or_code, comment = line.split(match.group(0), 1)
             try:
@@ -67,12 +93,40 @@ def decrypt_comments_in_file(file_content: str):
                 decrypted_lines.append(f'{space_or_code}{match.group(0)}{decrypted_comment}')
             except:
                 decrypted_lines.append(line)
+        elif match2:
+            segments = line.split()
+            for segment in segments:
+                try:
+                    decrypted_segment = decrypt_comment(segment, key)
+                    line = line.replace(segment, decrypted_segment)
+                except:
+                    pass
+            decrypted_lines.append(line)
         else:
             decrypted_lines.append(line)
 
     # with open(file_path, 'w') as file:
     #     file.writelines(decrypted_lines)
-    return '\n'.join(decrypted_lines)
+    # return '\n'.join(decrypted_lines)
+    script = '\n'.join(decrypted_lines)
+    pattern = r'/\*\*\n(.*?)\n\s*\*/' # The ? makes the * non-greedy # to match DocBlocks
+    matches = re.finditer(pattern, script, re.DOTALL) # re.DOTALL makes the . match any character including newline
+    DocBlocks_start_end = [(match.start(1), match.end(1)) for match in matches]
+    for start, end in DocBlocks_start_end[::-1]:
+        DocBlock_lines = script[start:end].split('\n')
+        decrypted_DocBlock_lines = []
+        for DocBlock_line in DocBlock_lines:
+            space, comment = DocBlock_line.split('*', 1)
+            segments = comment.split()
+            for segment in segments:
+                try:
+                    decrypted_segment = decrypt_comment(segment, key)
+                    comment = comment.replace(segment, decrypted_segment)
+                except:
+                    pass
+            decrypted_DocBlock_lines.append(f'{space}*{comment}')
+        script = script[:start] + '\n'.join(decrypted_DocBlock_lines) + script[end:]
+    return script
 
 # # Usage
 # file_path = 'your_source_code.php'
