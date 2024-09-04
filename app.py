@@ -29,6 +29,8 @@ def encrypt_comments_in_file(file_content: str):
     for line in lines:
         match = re.search('|'.join(['//', '#region ', '#endregion ']), line, re.IGNORECASE)
         match2 = re.search(r'/\*\*.*\*/', line)
+        matches1 = re.finditer("'(.*?)'", line) # The ? makes the * non-greedy for single-quoted string matches
+        matches2 = re.finditer('"(.*?)"', line) # The ? makes the * non-greedy for double-quoted string matches
         if match:
             space_or_code, comment = line.split(match.group(0), 1)
             if contains_japanese(comment):
@@ -42,6 +44,20 @@ def encrypt_comments_in_file(file_content: str):
                 if contains_japanese(segment):
                     encrypted_segment = encrypt_comment(segment, key)
                     line = line.replace(segment, encrypted_segment)
+            encrypted_lines.append(line)
+        elif matches1:
+            literals = [match.group(1) for match in matches1]
+            for literal in literals:
+                if contains_japanese(literal):
+                    encrypted_literal = encrypt_comment(literal, key)
+                    line = line.replace(literal, encrypted_literal)
+            encrypted_lines.append(line)
+        elif matches2:
+            literals = [match.group(1) for match in matches2]
+            for literal in literals:
+                if contains_japanese(literal):
+                    encrypted_literal = encrypt_comment(literal, key)
+                    line = line.replace(literal, encrypted_literal)
             encrypted_lines.append(line)
         else:
             encrypted_lines.append(line)
@@ -86,6 +102,8 @@ def decrypt_comments_in_file(file_content: str):
     for line in lines:
         match = re.search('|'.join(['//', '#region ', '#endregion ']), line, re.IGNORECASE)
         match2 = re.search(r'/\*\*.*\*/', line)
+        matches1 = re.finditer("'(.*?)'", line) # The ? makes the * non-greedy for single-quoted string matches
+        matches2 = re.finditer('"(.*?)"', line) # The ? makes the * non-greedy for double-quoted string matches
         if match:
             space_or_code, comment = line.split(match.group(0), 1)
             try:
@@ -99,6 +117,24 @@ def decrypt_comments_in_file(file_content: str):
                 try:
                     decrypted_segment = decrypt_comment(segment, key)
                     line = line.replace(segment, decrypted_segment)
+                except:
+                    pass
+            decrypted_lines.append(line)
+        elif matches1:
+            literals = [match.group(1) for match in matches1]
+            for literal in literals:
+                try:
+                    decrypted_literal = decrypt_comment(literal, key)
+                    line = line.replace(literal, decrypted_literal)
+                except:
+                    pass
+            decrypted_lines.append(line)
+        elif matches2:
+            literals = [match.group(1) for match in matches2]
+            for literal in literals:
+                try:
+                    decrypted_literal = decrypt_comment(literal, key)
+                    line = line.replace(literal, decrypted_literal)
                 except:
                     pass
             decrypted_lines.append(line)
@@ -134,7 +170,7 @@ def decrypt_comments_in_file(file_content: str):
 # decrypt_comments_in_file(file_path)
 
 
-st.title('PHP腳本日文註解加密/解密工具')
+st.title('PHP CJK註解及字串 加密/解密工具')
 
 passphrase = st.text_input("金鑰（自訂）")
 key = generate_key(passphrase)
