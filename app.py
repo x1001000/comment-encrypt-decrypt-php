@@ -62,7 +62,7 @@ def encrypt_comments_in_file(file_content: str):
     #     file.writelines(encrypted_lines)
     # return '\n'.join(encrypted_lines)
     script = '\n'.join(encrypted_lines)
-    pattern = r'/\*\*\n(.*?)\n\s*\*/' # The ? makes the * non-greedy # to match DocBlocks
+    pattern = r'/\*\*?\n(.*?)\n\s*\*/' # The ? makes the * non-greedy # to match DocBlocks
     matches = re.finditer(pattern, script, re.DOTALL) # re.DOTALL makes the . match any character including newline
     DocBlocks_start_end = [(match.start(1), match.end(1)) for match in matches]
     for start, end in DocBlocks_start_end[::-1]:
@@ -137,7 +137,7 @@ def decrypt_comments_in_file(file_content: str):
     #     file.writelines(decrypted_lines)
     # return '\n'.join(decrypted_lines)
     script = '\n'.join(decrypted_lines)
-    pattern = r'/\*\*\n(.*?)\n\s*\*/' # The ? makes the * non-greedy # to match DocBlocks
+    pattern = r'/\*\*?\n(.*?)\n\s*\*/' # The ? makes the * non-greedy # to match DocBlocks
     matches = re.finditer(pattern, script, re.DOTALL) # re.DOTALL makes the . match any character including newline
     DocBlocks_start_end = [(match.start(1), match.end(1)) for match in matches]
     for start, end in DocBlocks_start_end[::-1]:
