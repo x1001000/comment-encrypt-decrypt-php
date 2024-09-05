@@ -68,14 +68,20 @@ def encrypt_comments_in_file(file_content: str):
     for start, end in DocBlocks_start_end[::-1]:
         DocBlock_lines = script[start:end].split('\n')
         encrypted_DocBlock_lines = []
+        isDocBlock = True
         for DocBlock_line in DocBlock_lines:
-            space, comment = DocBlock_line.split('*', 1)
+            try:
+                space, comment = DocBlock_line.split('*', 1)
+                assert space.replace(' ', '') == ''
+            except:
+                comment = DocBlock_line
+                isDocBlock = False
             segments = comment.split()
             for segment in segments:
                 if contains_japanese(segment):
                     encrypted_segment = encrypt_comment(segment, key)
                     comment = comment.replace(segment, encrypted_segment)
-            encrypted_DocBlock_lines.append(f'{space}*{comment}')
+            encrypted_DocBlock_lines.append(f'{space}*{comment}' if isDocBlock else comment)
         script = script[:start] + '\n'.join(encrypted_DocBlock_lines) + script[end:]
     return script
 
@@ -143,8 +149,14 @@ def decrypt_comments_in_file(file_content: str):
     for start, end in DocBlocks_start_end[::-1]:
         DocBlock_lines = script[start:end].split('\n')
         decrypted_DocBlock_lines = []
+        isDocBlock = True
         for DocBlock_line in DocBlock_lines:
-            space, comment = DocBlock_line.split('*', 1)
+            try:
+                space, comment = DocBlock_line.split('*', 1)
+                assert space.replace(' ', '') == ''
+            except:
+                comment = DocBlock_line
+                isDocBlock = False
             segments = comment.split()
             for segment in segments:
                 try:
@@ -152,7 +164,7 @@ def decrypt_comments_in_file(file_content: str):
                     comment = comment.replace(segment, decrypted_segment)
                 except:
                     pass
-            decrypted_DocBlock_lines.append(f'{space}*{comment}')
+            decrypted_DocBlock_lines.append(f'{space}*{comment}' if isDocBlock else comment)
         script = script[:start] + '\n'.join(decrypted_DocBlock_lines) + script[end:]
     return script
 
